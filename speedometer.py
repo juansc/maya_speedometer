@@ -1,11 +1,6 @@
 import maya.cmds as cmds
 import math
 
-def addAttributeToObjects(objects, attribute):
-    for obj in objects:
-        if not cmds.attributeQuery(attribute, node=obj, exists=True):
-            cmds.addAttr(obj, longName=attribute, defaultValue=0.0, minValue=0.0 )
-
 frameRates = {
     'game': 15,
     'film': 24,
@@ -18,6 +13,8 @@ frameRates = {
 
 startFrame = cmds.playbackOptions(query=True, minTime=True)
 endFrame = cmds.playbackOptions(query=True, maxTime=True)
+currentFrame = startFrame
+
 framesPerSecond = frameRates[cmds.currentUnit(query=True,time=True)]
 timeInterval = 1.0 / framesPerSecond
 
@@ -28,25 +25,27 @@ addAttributeToObjects([objects], attr)
 
 objPos = cmds.getAttr(obj + '.translate')[0]
 
-previousX, previousY, previousZ = objPos[:3]
-
-currentFrame = startFrame
-
-print "Current frame is %s" % startFrame
-print "Beginning Frame is %s" % endFrame
+prevPos = objPos[:3]
 
 while(currentFrame < endFrame):
     currentFrame += 1
-    objPos = cmds.getAttr(obj + '.translate', time=currentFrame)[0]
-    currentX, currentY, currentZ = objPos[:3]
 
-    dx = (currentX - previousX) ** 2
-    dy = (currentY - previousY) ** 2
-    dz = (currentZ - previousZ) ** 2
-    displacement = math.sqrt(dx + dy + dz)
-    speed = displacement / timeInterval
+    objPos = cmds.getAttr(obj + '.translate', time=currentFrame)[0]
+    currentPos = objPos[:3]
+
+    speed = getSpeed(prevPos, currentPos, timeInterval)
 
     cmds.setKeyframe(obj, at='speed', v = speed, t = currentFrame)
-    print speed
+    prevPos = currentPos
+
+    currentX, currentY, currentZ = currentPos
     print "X: %s Y: %s Z: %s" % (currentX, currentY, currentZ)
-    previousX, previousY, previousZ  = currentX, currentY, currentZ
+
+def getSpeed(prevPos, currentPos, dt):
+    displacement = math.sqrt(sum((x - y)**2 for x,y in zip(prevPos,currentPos)))
+    return displacement / dt
+
+def addAttributeToObjects(objects, attribute):
+    for obj in objects:
+        if not cmds.attributeQuery(attribute, node=obj, exists=True):
+            cmds.addAttr(obj, longName=attribute, defaultValue=0.0, minValue=0.0 )
