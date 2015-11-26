@@ -15,31 +15,27 @@ startFrame = cmds.playbackOptions(query=True, minTime=True)
 endFrame = cmds.playbackOptions(query=True, maxTime=True)
 currentFrame = startFrame
 
-framesPerSecond = frameRates[cmds.currentUnit(query=True,time=True)]
-timeInterval = 1.0 / framesPerSecond
+fps = frameRates[cmds.currentUnit(query=True,time=True)]
+timeInterval = 1.0 / fps
 
-objects = cmds.ls(selection=True)[0]
+selectedObjects = cmds.ls(selection=True)
 attr = 'speed'
+addAttributeToObjects(selectedObjects, attr)
 
-addAttributeToObjects([objects], attr)
-
-objPos = cmds.getAttr(obj + '.translate')[0]
-
-prevPos = objPos[:3]
+prevPos = []
+for obj in selectedObjects:
+    prevPos.append(cmds.getAttr(obj + '.translate')[0])
 
 while(currentFrame < endFrame):
     currentFrame += 1
+    for k in xrange(0, len(selectedObjects)):
+        obj = selectedObjects[k]
+        currentPos = cmds.getAttr(obj + '.translate', time=currentFrame)[0]
 
-    objPos = cmds.getAttr(obj + '.translate', time=currentFrame)[0]
-    currentPos = objPos[:3]
+        speed = getSpeed(prevPos[k], currentPos, timeInterval)
 
-    speed = getSpeed(prevPos, currentPos, timeInterval)
-
-    cmds.setKeyframe(obj, at='speed', v = speed, t = currentFrame)
-    prevPos = currentPos
-
-    currentX, currentY, currentZ = currentPos
-    print "X: %s Y: %s Z: %s" % (currentX, currentY, currentZ)
+        cmds.setKeyframe(obj, at='speed', v = speed, t = currentFrame)
+        prevPos[k] = currentPos
 
 def getSpeed(prevPos, currentPos, dt):
     displacement = math.sqrt(sum((x - y)**2 for x,y in zip(prevPos,currentPos)))
